@@ -1,4 +1,5 @@
 # Extract ABAQUS ODB into VTK unstructured grid data format
+# Based on the code of Hadi Hosseini
 
 # Get ABAQUS interface
 from abaqus import *
@@ -11,9 +12,6 @@ from odbMaterial import *
 from odbSection import *
 import os
 
-loadingElement=1
-loadingNodes=4
-
 specimenList=['C3D10_single']
 
 frequency = 1
@@ -24,10 +22,9 @@ InitialCoords=dict()
 for specimen in specimenList: 
    directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/00_Original_Files/HadiHosseini_March2026/'
    odbPath = directory+specimen+'.odb'
-   CtxInpPath = directory+specimen+'.inp'
-   TrabInpPath = directory+specimen+'.inp'
+   inpPath = directory+specimen+'.inp'
    datPath = directory+specimen+'.dat'
-   vtkFile1 = directory+'/vtk_'+specimen+'/'+specimen+'_coarse_nonlocal_'   
+   vtkFile1 = directory+'/vtk_'+specimen+'/'+specimen  
 
 ##########################################################################################
    instanceName = 'PART-1-1'
@@ -35,7 +32,6 @@ for specimen in specimenList:
    
    # Open the odb
    myOdb = session.openOdb(name=odbPath)
-   #odb=openOdb(path = odbPath, readOnly=True)
 
    # Get the frame repository for the step, find number of frames
    frames = myOdb.steps[stepName].frames
@@ -45,61 +41,57 @@ for specimen in specimenList:
 
    # Isolate the instance, get the number of nodes and elements
    myInstance = myOdb.rootAssembly.instances[instanceName]
-   numNodes1 = len(myInstance.nodes)
-   numNodes=numNodes1-loadingNodes
-   numElements1 = len(myInstance.elements)
-   numElements=numElements1-loadingElement
-   print ('numNodes = ', numNodes)
-   print ('numElements = ', numElements)
+   numNodes = len(myInstance.nodes)
+   numElements = len(myInstance.elements)
 
    # Isolate the displacement field
    for fr in range(frequency,numFrames,frequency):
      DISPLACEMENT[fr]=dict()  
      DISPLACEMENT[fr]=frames[fr].fieldOutputs['U'].getSubset(region=myInstance).values
-        
-   # Get the initial nodal coordinates
-   for nd in range(0, numNodes):
-     coords = myInstance.nodes[nd].coordinates
-     InitialCoords[nd] = []
-     InitialCoords[nd].append(coords[0])
-     InitialCoords[nd].append(coords[1])
-     InitialCoords[nd].append(coords[2])
-     #print 'nd = ', nd, ' Initial Coordinates = ', InitialCoords[nd][0], InitialCoords[nd][1], InitialCoords[nd][2]
-     #print 'nd = ', nd, ' DISPLACEMENT[100]=', DISPLACEMENT[100][nd].data[0],DISPLACEMENT[100][nd].data[1],DISPLACEMENT[100][nd].data[2] 
+
 ##########################################################################################
    # Get the element connectivity
    elementConnectivity = []
+   InitialCoords = []
    nodeid = {}
-   CtxInpFile = open(CtxInpPath,'r')
-   Ctxlinesinp = CtxInpFile.readlines()
-   TrabInpFile = open(TrabInpPath,'r')
-   Trablinesinp = TrabInpFile.readlines()   
-   i=0
-   switch=0
-   switch3=0
-   while i <len(Ctxlinesinp):
 
-      if Ctxlinesinp[i].find('*NODE')>-1 and Ctxlinesinp[i].find('*NSET')>-1: 
-         switch3=1  
-         ii=i   
-      if switch3 == 1 and Ctxlinesinp[i].find('*NODE') == -1 and Ctxlinesinp[i].find('**') == -1:
-         node =  Ctxlinesinp[i].split(',')
-         nodeid[int(node[0])]=i-ii-1
-      if Ctxlinesinp[i].find('***') >-1: 
-         switch3 =0
-         print ('dict length = ', len(nodeid))
+   with open(inpPath, 'r') as f:
+    lines = f.readlines()
+
+   reading_nodes = False
+   vtk_index = 0
+   for line in lines:
+      line = line.strip()
+      if line.startswith('*NODE,'):
+         reading_nodes = True
+         continue
+      if reading_nodes and (line.startswith('*') or line.startswith('**')):
+         reading_nodes = False
+         continue
+      if reading_nodes:
+         parts = line.split(',')
+         abaqus_id = int(parts[0])
+         coords = [float(parts[1]), float(parts[2]), float(parts[3])]
+         nodeid[abaqus_id] = vtk_index
+         InitialCoords.append(coords)  # order matches VTK indices
+         vtk_index += 1
       
-      if Ctxlinesinp[i].find('*ELEMENT,')>-1 and Ctxlinesinp[i].find('TYPE,')>-1: switch=1
-      if switch==1: 
-         con = []
-         element = Ctxlinesinp[i+1].split(',')
-           
-         elementConnectivity.append((nodeid[int(element[1])],nodeid[int(element[2])],nodeid[int(element[3])],\
-         nodeid[int(element[4])],nodeid[int(element[5])],nodeid[int(element[6])],nodeid[int(element[7])],\
-         nodeid[int(element[8])],nodeid[int(element[9])],nodeid[int(element[10])]))
-      switch=0
-      i=i+1      
-   CtxInpFile.close()  
+   elementConnectivity = []
+
+   reading_elements = False
+   for line in lines:
+      line = line.strip()
+      if line.startswith('*ELEMENT,'):
+         reading_elements = True
+         continue
+      if reading_elements and (line.startswith('*') or line.startswith('**')):
+         reading_elements = False
+         continue
+      if reading_elements:
+         parts = line.split(',')
+         # skip element ID (parts[0]), map all remaining node IDs
+         connectivity = [nodeid[int(nid)] for nid in parts[1:]]
+         elementConnectivity.append(connectivity)
    
 ##########################################################################################   
    # Get the damage values
