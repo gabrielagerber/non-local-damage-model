@@ -9,6 +9,7 @@ from math import *
 from abaqusConstants import *
 from odbMaterial import *
 from odbSection import *
+import os
 
 loadingElement=1
 loadingNodes=4
@@ -23,8 +24,8 @@ InitialCoords=dict()
 for specimen in specimenList: 
    directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/00_Original_Files/HadiHosseini_March2026/'
    odbPath = directory+specimen+'.odb'
-   CtxInpPath = directory+specimen+'_QUAEQ_c5_Cort_tet_uel.inp'
-   TrabInpPath = directory+specimen+'_QUAEQ_c5_uel.inp'
+   CtxInpPath = directory+specimen+'.inp'
+   TrabInpPath = directory+specimen+'.inp'
    datPath = directory+specimen+'.dat'
    vtkFile1 = directory+'/vtk_'+specimen+'/'+specimen+'_coarse_nonlocal_'   
 
@@ -48,8 +49,8 @@ for specimen in specimenList:
    numNodes=numNodes1-loadingNodes
    numElements1 = len(myInstance.elements)
    numElements=numElements1-loadingElement
-   print 'numNodes = ', numNodes
-   print 'numElements = ', numElements
+   print ('numNodes = ', numNodes)
+   print ('numElements = ', numElements)
 
    # Isolate the displacement field
    for fr in range(frequency,numFrames,frequency):
@@ -78,7 +79,7 @@ for specimen in specimenList:
    switch3=0
    while i <len(Ctxlinesinp):
 
-      if Ctxlinesinp[i].find('*NODE')>-1: 
+      if Ctxlinesinp[i].find('*NODE')>-1 and Ctxlinesinp[i].find('*NSET')>-1: 
          switch3=1  
          ii=i   
       if switch3 == 1 and Ctxlinesinp[i].find('*NODE') == -1 and Ctxlinesinp[i].find('**') == -1:
@@ -86,9 +87,9 @@ for specimen in specimenList:
          nodeid[int(node[0])]=i-ii-1
       if Ctxlinesinp[i].find('***') >-1: 
          switch3 =0
-         print 'dict length = ', len(nodeid)
+         print ('dict length = ', len(nodeid))
       
-      if Ctxlinesinp[i].find('*ELEMENT,')>-1: switch=1
+      if Ctxlinesinp[i].find('*ELEMENT,')>-1 and Ctxlinesinp[i].find('TYPE,')>-1: switch=1
       if switch==1: 
          con = []
          element = Ctxlinesinp[i+1].split(',')
@@ -100,18 +101,6 @@ for specimen in specimenList:
       i=i+1      
    CtxInpFile.close()  
    
-   switch=0
-   for i in range(len(Trablinesinp)):
-      if Trablinesinp[i].find('*ELEMENT,')>-1: switch=1
-      if switch==1: 
-         con = []
-         element = Trablinesinp[i+1].split(',')
-           
-         elementConnectivity.append((nodeid[int(element[1])],nodeid[int(element[2])],nodeid[int(element[3])],\
-         nodeid[int(element[4])],nodeid[int(element[5])],nodeid[int(element[6])],nodeid[int(element[7])],\
-         nodeid[int(element[8])],nodeid[int(element[9])],nodeid[int(element[10])]))
-      switch=0      
-   TrabInpFile.close()  
 ##########################################################################################   
    # Get the damage values
    datFile = open(datPath,'r')
@@ -157,11 +146,14 @@ for specimen in specimenList:
 ##########################################################################################
    for fr in range(0,numFrames,frequency):
         # Open the output vtk file and write the header
-        print 'i am here 1'
+        print ('i am here 1')
+        vtk_dir = os.path.dirname(vtkFile1)  # extracts the folder path
+        if not os.path.exists(vtk_dir):
+            os.makedirs(vtk_dir)
         vtkFile = open(vtkFile1+str(fr)+'.vtk', 'w')
-        print 'i am here 2'
+        print ('i am here 2')
         vtkFile.write('# vtk DataFile Version 2.0\n')
-        print 'i am here 3'
+        print ('i am here 3')
         vtkFile.write('Reconstructed Lagrangian Field Data\n')
         vtkFile.write('ASCII\n')
         vtkFile.write('DATASET UNSTRUCTURED_GRID\n')
