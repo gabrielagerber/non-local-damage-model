@@ -67,14 +67,8 @@ RF
 *OUTPUT, HISTORY, FREQUENCY=1
 *NODE OUTPUT, NSET=ALLNODES
 U, 
-RF,
-*Output, field, variable=PRESELECT, frequency=10
-*EL PRINT, ELSET = TETRA, Position = Integration Points, summary = NO
-E
-*EL PRINT, ELSET = TETRA, Position = Integration Points, summary = NO
-S
-*EL PRINT, ELSET = TETRA, Position = Integration Points, summary = NO
-DG
-*EL PRINT, ELSET = TETRA, Position = Integration Points, summary = NO
-SDV
+RF
+*OUTPUT, FIELD, FREQUENCY=1
+*ELEMENT OUTPUT, ELSET=TETRA, POSITION=INTEGRATION POINTS
+SDV, S, E
 *END STEP
