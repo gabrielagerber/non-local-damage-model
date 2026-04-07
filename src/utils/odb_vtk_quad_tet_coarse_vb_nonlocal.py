@@ -237,3 +237,7 @@ for specimen in specimenList:
         vtkFile.close()
 
     myOdb.close()
+
+    '''
+    abaqus viewer noGUI=odb_vtk_quad_tet_coarse_vb_nonlocal.py
+    '''
