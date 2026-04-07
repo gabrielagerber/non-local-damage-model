@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-# ABAQUS to VTK export script
-# Exports all field variables with element-based averaging
+# ABAQUS to VTK export script with scalars, vectors, and tensors
 # Python 2.7 compatible
 
 from abaqus import *
@@ -14,13 +13,13 @@ frequency = 1  # frame frequency
 DISPLACEMENT = dict()  # nodal displacements
 InitialCoords = dict()
 
-
 # -------------------------------
-# Helper function: average element field
+# Helper function: average element field (scalar or tensor)
 def average_element_field(fieldValues, numElements):
     """
     Returns a list of length numElements, each value is the average
     over all Gauss points for that element.
+    Supports scalar, vector (tuple/list), and tensor (tuple/list of 6)
     """
     elementVals = {}
     for val in fieldValues:
@@ -30,18 +29,35 @@ def average_element_field(fieldValues, numElements):
         if isinstance(val.data, float):
             elementVals[eid].append(val.data)
         else:
-            # take the first component for now
-            elementVals[eid].append(val.data[0])
+            elementVals[eid].append(val.data)
 
     avg_list = []
     for el in range(1, numElements + 1):
         if el in elementVals:
-            avg_val = sum(elementVals[el]) / len(elementVals[el])
+            vals = elementVals[el]
+            n = float(len(vals))
+            # compute component-wise average
+            if isinstance(vals[0], float):
+                avg_val = sum(vals) / n
+            else:
+                # tuple/list
+                avg_val = [sum([v[i] for v in vals]) / n for i in range(len(vals[0]))]
         else:
-            avg_val = 0.0
+            # default zero
+            if isinstance(fieldValues[0].data, float):
+                avg_val = 0.0
+            else:
+                avg_val = [0.0]*len(fieldValues[0].data)
         avg_list.append(avg_val)
     return avg_list
 
+# -------------------------------
+# Detect if field is nodal
+def is_nodal_field(fieldValues):
+    try:
+        return hasattr(fieldValues[0], 'nodeLabel') and fieldValues[0].nodeLabel is not None
+    except:
+        return False
 
 # -------------------------------
 for specimen in specimenList:
@@ -119,21 +135,20 @@ for specimen in specimenList:
             fieldValues = frames[fr].fieldOutputs[fld].getSubset(region=myInstance).values
             vals_per_element_or_node = []
 
-            # Nodal or element-based
-            if hasattr(fieldValues[0], 'nodeLabel'):  # nodal
+            if is_nodal_field(fieldValues):
+                # Nodal field: store vector or scalar
                 for val in fieldValues:
-                    if isinstance(val.data, float):
-                        vals_per_element_or_node.append(val.data)
-                    else:
-                        vals_per_element_or_node.append(val.data[0])
-                # pad to numNodes if needed
+                    vals_per_element_or_node.append(val.data)
                 while len(vals_per_element_or_node) < numNodes:
                     vals_per_element_or_node.append(0.0)
-            else:  # element-based
+            else:
+                # Element-based field: average over gauss points
                 vals_per_element_or_node = average_element_field(fieldValues, numElements)
-                # pad to numElements if needed
                 while len(vals_per_element_or_node) < numElements:
-                    vals_per_element_or_node.append(0.0)
+                    if isinstance(fieldValues[0].data, float):
+                        vals_per_element_or_node.append(0.0)
+                    else:
+                        vals_per_element_or_node.append([0.0]*len(fieldValues[0].data))
 
             fieldDict[fr][fld] = vals_per_element_or_node
 
@@ -160,7 +175,7 @@ for specimen in specimenList:
                 x += DISPLACEMENT[fr][nd].data[0]
                 y += DISPLACEMENT[fr][nd].data[1]
                 z += DISPLACEMENT[fr][nd].data[2]
-            vtkFile.write('%f\t%f\t%f\n' % (x, y, z))
+            vtkFile.write('%f %f %f\n' % (x, y, z))
 
         # Write elements
         totalCellInts = sum([len(c)+1 for c in elementConnectivity])
@@ -173,25 +188,51 @@ for specimen in specimenList:
         for el in range(numElements):
             vtkFile.write('24\n')  # C3D10
 
-        # POINT_DATA
+        # -------------------------------
+        # POINT_DATA (nodal)
         vtkFile.write('POINT_DATA %i\n' % numNodes)
         for fld in fieldDict.get(fr, {}):
             fieldValues = frames[fr].fieldOutputs[fld].getSubset(region=myInstance).values
-            if hasattr(fieldValues[0], 'nodeLabel'):  # nodal
-                vtkFile.write('SCALARS %s float 1\n' % fld)
-                vtkFile.write('LOOKUP_TABLE default\n')
-                for val in fieldDict[fr][fld]:
-                    vtkFile.write('%f\n' % val)
+            if is_nodal_field(fieldValues):
+                # Determine if vector
+                if isinstance(fieldValues[0].data, float):
+                    # Scalar
+                    vtkFile.write('SCALARS %s float 1\n' % fld)
+                    vtkFile.write('LOOKUP_TABLE default\n')
+                    for val in fieldDict[fr][fld]:
+                        vtkFile.write('%f\n' % val)
+                else:
+                    # Vector
+                    vtkFile.write('VECTORS %s float\n' % fld)
+                    for val in fieldDict[fr][fld]:
+                        vtkFile.write('%f %f %f\n' % (val[0], val[1], val[2]))
 
-        # CELL_DATA
+        # -------------------------------
+        # CELL_DATA (element)
         vtkFile.write('CELL_DATA %i\n' % numElements)
         for fld in fieldDict.get(fr, {}):
             fieldValues = frames[fr].fieldOutputs[fld].getSubset(region=myInstance).values
-            if not hasattr(fieldValues[0], 'nodeLabel'):  # element-based
-                vtkFile.write('SCALARS %s float 1\n' % fld)
-                vtkFile.write('LOOKUP_TABLE default\n')
-                for val in fieldDict[fr][fld]:
-                    vtkFile.write('%f\n' % val)
+            if not is_nodal_field(fieldValues):
+                val0 = fieldDict[fr][fld][0]
+                if isinstance(val0, float):
+                    # Scalar
+                    vtkFile.write('SCALARS %s float 1\n' % fld)
+                    vtkFile.write('LOOKUP_TABLE default\n')
+                    for val in fieldDict[fr][fld]:
+                        vtkFile.write('%f\n' % val)
+                elif len(val0) == 3:
+                    # Vector
+                    vtkFile.write('VECTORS %s float\n' % fld)
+                    for val in fieldDict[fr][fld]:
+                        vtkFile.write('%f %f %f\n' % (val[0], val[1], val[2]))
+                elif len(val0) == 6:
+                    # Symmetric tensor: Sxx,Syy,Szz,Sxy,Syz,Sxz
+                    vtkFile.write('TENSORS %s float\n' % fld)
+                    for val in fieldDict[fr][fld]:
+                        Sxx,Syy,Szz,Sxy,Syz,Sxz = val
+                        vtkFile.write('%f %f %f\n' % (Sxx,Sxy,Sxz))
+                        vtkFile.write('%f %f %f\n' % (Sxy,Syy,Syz))
+                        vtkFile.write('%f %f %f\n' % (Sxz,Syz,Szz))
 
         vtkFile.close()
 
