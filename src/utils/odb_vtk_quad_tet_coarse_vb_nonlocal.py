@@ -1,136 +1,179 @@
+# Extract ABAQUS ODB into VTK unstructured grid data format
+# Based on the code of Hadi Hosseini, modified to read SDV8 from ODB
+
+# Get ABAQUS interface
 from abaqus import *
 from abaqusConstants import *
+from sys import exit, stdout, argv
 from odbAccess import *
+from math import *
+from abaqusConstants import *
+from odbMaterial import *
+from odbSection import *
 import os
 
-# ---------------- USER SETTINGS ----------------
 specimenList = ['C3D10_single_Abq']
-directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/single_C3D10_Abq/'
-instanceName = 'PART-1-1'
-stepName = 'Step-1'
 frequency = 1
-SDV_FIELD = 'SDV8'
-# -----------------------------------------------
 
+DISPLACEMENT = dict()
+InitialCoords = dict()
 
-for specimen in specimenList:
+for specimen in specimenList: 
+    directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/single_C3D10_Abq/'
+    odbPath = directory + specimen + '.odb'
+    inpPath = directory + specimen + '.inp'
+    vtkFile1 = directory + '/vtk_' + specimen + '/' + specimen  
 
-    odbPath = os.path.join(directory, specimen + '.odb')
-    vtkBase = os.path.join(directory, 'vtk_' + specimen, specimen)
-
-    if not os.path.exists(os.path.dirname(vtkBase)):
-        os.makedirs(os.path.dirname(vtkBase))
-
-    print('Opening ODB:', odbPath)
+    ##########################################################################################
+    instanceName = 'PART-1-1'
+    stepName = 'Step-1'
+   
+    # Open the odb
     myOdb = session.openOdb(name=odbPath)
 
+    # Get the frame repository for the step, find number of frames
     frames = myOdb.steps[stepName].frames
     numFrames = len(frames)
+   
+    numFreq = numFrames / int(frequency)
 
+    # Isolate the instance, get the number of nodes and elements
     myInstance = myOdb.rootAssembly.instances[instanceName]
-    nodes = myInstance.nodes
-    elements = myInstance.elements
+    numNodes = len(myInstance.nodes)
+    numElements = len(myInstance.elements)
 
-    numNodes = len(nodes)
-    numElements = len(elements)
+    # Isolate the displacement field
+    for fr in range(frequency, numFrames, frequency):
+        DISPLACEMENT[fr] = frames[fr].fieldOutputs['U'].getSubset(region=myInstance).values
 
-    # ---------------------------------------------------------
-    # Build node map and initial coordinates from ODB
-    # ---------------------------------------------------------
-    InitialCoords = []
-    nodeid = {}  # Abaqus label -> VTK index
-
-    for vtk_index, node in enumerate(nodes):
-        nodeid[node.label] = vtk_index
-        InitialCoords.append(node.coordinates)
-
-    # ---------------------------------------------------------
-    # Build element connectivity from ODB
-    # ---------------------------------------------------------
+    ##########################################################################################
+    # Get the element connectivity
     elementConnectivity = []
-    elementLabels = []
+    InitialCoords = []
+    nodeid = {}
 
-    for el in elements:
-        conn = [nodeid[n] for n in el.connectivity]
-        elementConnectivity.append(conn)
-        elementLabels.append(el.label)
+    with open(inpPath, 'r') as f:
+        lines = f.readlines()
 
-    # ---------------------------------------------------------
-    # Loop over frames
-    # ---------------------------------------------------------
+    reading_nodes = False
+    vtk_index = 0
+    for line in lines:
+        line = line.strip()
+        if line.startswith('*NODE,'):
+            reading_nodes = True
+            continue
+        if reading_nodes and (line.startswith('*') or line.startswith('**')):
+            reading_nodes = False
+            continue
+        if reading_nodes:
+            parts = line.split(',')
+            abaqus_id = int(parts[0])
+            coords = [float(parts[1]), float(parts[2]), float(parts[3])]
+            nodeid[abaqus_id] = vtk_index
+            InitialCoords.append(coords)  # order matches VTK indices
+            vtk_index += 1
+      
+    elementConnectivity = []
+
+    reading_elements = False
+    for line in lines:
+        line = line.strip()
+        if line.startswith('*ELEMENT,'):
+            reading_elements = True
+            continue
+        if reading_elements and (line.startswith('*') or line.startswith('**')):
+            reading_elements = False
+            continue
+        if reading_elements:
+            parts = line.split(',')
+            # skip element ID (parts[0]), map all remaining node IDs
+            connectivity = [nodeid[int(nid)] for nid in parts[1:]]
+            elementConnectivity.append(connectivity)
+   
+    ##########################################################################################
+    # Extract SDV8 values directly from the ODB
+    SDV_FIELD = 'SDV8'  # replace with actual SDV name in ODB
+    sdvDict = {}  # key: frame number, value: list of element averaged SDV8
+
+    for fr in range(frequency, numFrames, frequency):
+        sdvDict[fr] = []
+
+        # Access the SDV field for the current frame
+        sdvField = frames[fr].fieldOutputs[SDV_FIELD].getSubset(region=myInstance).values
+
+        # Accumulate SDV8 per element
+        elementVals = {}  # key: elementLabel, value: list of SDV8 per gauss point
+        for val in sdvField:
+            eid = val.elementLabel
+            if eid not in elementVals:
+                elementVals[eid] = []
+            elementVals[eid].append(val.data)  # val.data is SDV8 at Gauss point
+
+        # Average SDV8 per element
+        for el in range(1, numElements + 1):
+            if el in elementVals:
+                avg_sdv = sum(elementVals[el]) / len(elementVals[el])
+            else:
+                avg_sdv = 0.0
+            sdvDict[fr].append(avg_sdv)
+
+    ##########################################################################################
     for fr in range(0, numFrames, frequency):
-
-        print('Processing frame:', fr)
-
-        vtkFile = open(vtkBase + str(fr) + '.vtk', 'w')
+        # Open the output vtk file and write the header
+        vtk_dir = os.path.dirname(vtkFile1)
+        if not os.path.exists(vtk_dir):
+            os.makedirs(vtk_dir)
+        vtkFile = open(vtkFile1 + str(fr) + '.vtk', 'w')
 
         vtkFile.write('# vtk DataFile Version 2.0\n')
-        vtkFile.write('Abaqus ODB Export\n')
+        vtkFile.write('Reconstructed Lagrangian Field Data\n')
         vtkFile.write('ASCII\n')
         vtkFile.write('DATASET UNSTRUCTURED_GRID\n')
+        
+        # Print out all the coordinates to the vtk file
+        vtkFile.write('POINTS %i float\n' % (numNodes))
+         
+        if fr == 0:
+            # write the initial coordinates
+            for nd in range(0, numNodes):
+                x = InitialCoords[nd][0]
+                y = InitialCoords[nd][1]
+                z = InitialCoords[nd][2]
+                vtkFile.write('%f\t%f\t%f\n' % (x, y, z))        
+        else:          
+            # Add displacements to the initial coordinates
+            for nd in range(0, numNodes):
+                x = InitialCoords[nd][0] + DISPLACEMENT[fr][nd].data[0]
+                y = InitialCoords[nd][1] + DISPLACEMENT[fr][nd].data[1]
+                z = InitialCoords[nd][2] + DISPLACEMENT[fr][nd].data[2]
+                vtkFile.write('%f\t%f\t%f\n' % (x, y, z))
 
-        # -----------------------------------------------------
-        # Displacement field mapped by node label
-        # -----------------------------------------------------
-        if fr > 0:
-            uField = frames[fr].fieldOutputs['U'].getSubset(region=myInstance).values
-            uDict = {v.nodeLabel: v.data for v in uField}
-
-        # -----------------------------------------------------
-        # Write nodes
-        # -----------------------------------------------------
-        vtkFile.write('POINTS %i float\n' % numNodes)
-
-        for node in nodes:
-            x0, y0, z0 = node.coordinates
-
-            if fr == 0:
-                x, y, z = x0, y0, z0
-            else:
-                ux, uy, uz = uDict[node.label]
-                x = x0 + ux
-                y = y0 + uy
-                z = z0 + uz
-
-            vtkFile.write('%f %f %f\n' % (x, y, z))
-
-        # -----------------------------------------------------
-        # Write elements (C3D10 -> VTK_QUADRATIC_TETRA = 24)
-        # -----------------------------------------------------
+        # Print out all the elements to the vtk file
         vtkFile.write('CELLS %i %i\n' % (numElements, 11 * numElements))
+     
+        for el in range(0, numElements):
+            n1, n2, n3, n4, n5, n6, n7, n8, n9, n10 = elementConnectivity[el]
+            vtkFile.write('10\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\t%i\n' % 
+                          (n1, n2, n3, n4, n5, n6, n7, n8, n9, n10))
 
-        for conn in elementConnectivity:
-            vtkFile.write('10 ' + ' '.join(str(n) for n in conn) + '\n')
-
-        vtkFile.write('CELL_TYPES %i\n' % numElements)
-        for _ in range(numElements):
+        # Print out all the cell types to the vtk file
+        vtkFile.write('CELL_TYPES %i\n' % (numElements))
+        for el in range(0, numElements):
             vtkFile.write('24\n')
 
-        # -----------------------------------------------------
-        # SDV8 averaged per element (mapped by element label)
-        # -----------------------------------------------------
-        vtkFile.write('CELL_DATA %i\n' % numElements)
-        vtkFile.write('SCALARS SDV8 float 1\n')
+        vtkFile.write('POINT_DATA %i\n' % (numNodes))
+        vtkFile.write('CELL_DATA %i\n' % (numElements))
+        
+        # Print out the scalar averaged SDV8 field to the vtk file
+        vtkFile.write('SCALARS SDV8 float 1\n')   
         vtkFile.write('LOOKUP_TABLE default\n')
+        
+        for el in range(numElements):
+            if fr == 0:
+                vtkFile.write('%f\n' % (0.0))
+            else:
+                vtkFile.write('%f\n' % (sdvDict[fr][el]))
 
-        if fr == 0:
-            for _ in range(numElements):
-                vtkFile.write('0.0\n')
-        else:
-            sdvField = frames[fr].fieldOutputs[SDV_FIELD].getSubset(region=myInstance).values
-
-            elementVals = {}
-            for val in sdvField:
-                eid = val.elementLabel
-                elementVals.setdefault(eid, []).append(val.data)
-
-            for eid in elementLabels:
-                if eid in elementVals:
-                    avg = sum(elementVals[eid]) / len(elementVals[eid])
-                else:
-                    avg = 0.0
-                vtkFile.write('%f\n' % avg)
-
-        vtkFile.close()
+        vtkFile.close()        
 
     myOdb.close()
