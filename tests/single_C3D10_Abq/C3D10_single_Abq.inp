@@ -1,0 +1,76 @@
+*Heading
+** C3D10 single element
+*****************************************
+*NODE, NSET=ALLNODES
+1, 0.0, 0.0, 0.0
+2, 1.0, 0.0, 0.0
+3, 0.0, 1.0, 0.0
+4, 0.0, 0.0, 1.0
+5, 0.5, 0.0, 0.0
+6, 0.5, 0.5, 0.0
+7, 0.0, 0.5, 0.0
+8, 0.0, 0.0, 0.5
+9, 0.5, 0.0, 0.5
+10, 0.0, 0.5, 0.5
+*****************************************
+*ELEMENT,TYPE=C3D10
+1, 1,  2, 3, 4, 5, 6, 7, 8, 9, 10
+*****************************************
+*ELSET, ELSET=TETRA
+1
+*****************************************
+*Material, name=mat1
+*Depvar
+28,
+*User Material, constants=15
+0, 0, 0, 3, 1.1, 1.0, 1.0, 1.0, 
+1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0
+*****************************************
+*SOLID SECTION, ELSET=TETRA,  MATERIAL=mat1
+*****************************************
+*NSET, NSET=BOTTOM
+ 1, 2, 3, 5, 6, 7
+*NSET, NSET=TOP
+ 4
+*****************************************
+** BOUNDARY CONDITIONS
+*BOUNDARY, TYPE=DISPLACEMENT
+BOTTOM, 1, 3, 0
+**TOP, 1, 2, 0
+*****************************************
+*STEP,NLGEOM=YES,INC=100000,UNSYMM=YES
+*STATIC
+0.01,1.0,1e-5,0.01
+*BOUNDARY, TYPE=DISPLACEMENT
+TOP, 3, 3, -0.85
+**
+*NODE PRINT,FREQUENCY=1
+*NODE PRINT,NSET=ALLNODES
+U,
+RF,
+*EL PRINT, ELSET=TETRA, POSITION=INTEGRATION POINTS
+S
+*EL PRINT, ELSET=TETRA, POSITION=INTEGRATION POINTS
+LE
+*EL PRINT, ELSET=TETRA, POSITION=INTEGRATION POINTS
+SDV
+*EL FILE, ELSET=TETRA
+SDV
+*OUTPUT, HISTORY, FREQUENCY=1
+*NODE OUTPUT, NSET=TOP
+U, 
+RF
+*OUTPUT, HISTORY, FREQUENCY=1
+**ELEMENT OUTPUT, ELSET=TETRA
+**EVOL,
+*OUTPUT, HISTORY, FREQUENCY=1
+*NODE OUTPUT, NSET=ALLNODES
+U, 
+RF
+*OUTPUT, FIELD, FREQUENCY=1
+*ELEMENT OUTPUT, ELSET=TETRA, POSITION=INTEGRATION POINTS
+SDV, S, LE
+*OUTPUT, FIELD, FREQUENCY=1
+*NODE OUTPUT, NSET=ALLNODES
+U
+*END STEP

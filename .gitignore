@@ -1,0 +1,10 @@
+**/abaqus*
+*.dat
+*.msg
+*.odb
+*.prt
+*.com
+*.fil
+*.sta
+*.vtk
+*.json
