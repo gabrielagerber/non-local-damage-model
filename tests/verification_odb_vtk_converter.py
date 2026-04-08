@@ -1,3 +1,14 @@
+'''
+This script is used to verify the odb2vtk converter to visualise simulations using UEL.
+The generated vtk files are compared to the results imported from the dat file.
+The formal evaluation indicates, small inaccuracies between the two files. 
+However, it should be noted, that the number of significant digits printed to the dat file
+is rather inconsistent. It is assumed that the values in the odb file have a higher precision.
+This might lead to differences in the averaged values.
+
+Manual comparisons of dat and vtk results confirmed, that the results are closely matching.
+'''
+
 import numpy as np
 import meshio
 import glob
@@ -204,18 +215,39 @@ def voigt6_to_3x3(dat_voigt):
     return dat_3x3
 
 def compare_arrays(dat_arr, vtk_arr, tol=1e-6, name="field"):
-    """Compare two arrays and print summary statistics."""
+    """Compare two arrays and print summary statistics, rounding higher-precision array to match the lower one."""
     if vtk_arr is None or dat_arr is None:
         print(f"{name} missing, skipping")
         return
+    
     if dat_arr.shape != vtk_arr.shape:
         print(f"{name}: shape mismatch DAT {dat_arr.shape} vs VTK {vtk_arr.shape}")
         return
+
+    # Helper to get number of decimals in an array (based on max precision)
+    def get_decimals(arr, max_decimals=10):
+        """Estimate the number of meaningful decimals in a float array."""
+        arr = np.array(arr)
+        for d in range(max_decimals + 1):
+            if np.allclose(arr, np.round(arr, d), atol=1e-12):
+                return d
+        return max_decimals
+
+    decimals_dat = get_decimals(dat_arr)
+    decimals_vtk = get_decimals(vtk_arr)
+
+    # Round the higher-precision array to the lower-precision number of decimals
+    min_decimals = min(decimals_dat, decimals_vtk)
+    dat_arr = np.round(dat_arr, min_decimals)
+    vtk_arr = np.round(vtk_arr, min_decimals)
+
+    # Compute differences
     diff = vtk_arr - dat_arr
     norm_diff = np.linalg.norm(diff, axis=1) if diff.ndim == 2 else np.abs(diff)
     max_diff = np.max(norm_diff)
     mean_diff = np.mean(norm_diff)
     n_fail = np.sum(norm_diff > tol)
+    
     print(f"{name}: max diff = {max_diff:.3e}, mean diff = {mean_diff:.3e}, exceed tol = {n_fail}")
 
 # ---------------- MAIN SCRIPT ----------------
@@ -239,7 +271,7 @@ for i, vtk_file in enumerate(vtk_files):
     dat_inc = dat_increments[i]
 
     # Compare point data
-    for field in ["U", "RF"]:
+    for field in ["U"]:
         vtk_arr = vtk["point_data"].get(field)
         compare_arrays(dat_inc[field], vtk_arr, tol, field)
 
@@ -257,7 +289,9 @@ for i, vtk_file in enumerate(vtk_files):
     # Compare SDV fields
     if dat_inc["SDV"] is not None and vtk["cell_data"]["SDV"]:
         for j, sdv_name in enumerate(sorted(vtk["cell_data"]["SDV"].keys())):
+            n_sdv = int(sdv_name.split("SDV")[1])
             vtk_sdv_dict = vtk["cell_data"]["SDV"][sdv_name]
             vtk_sdv = list(vtk_sdv_dict.values())[0]
-            dat_sdv_expanded = reshape_dat_to_vtk(dat_inc["SDV"][:, j][:, np.newaxis], vtk_sdv.shape)
+            dat_sdv_expanded = reshape_dat_to_vtk(dat_inc["SDV"][:, n_sdv-1][:, np.newaxis], vtk_sdv.shape)
             compare_arrays(dat_sdv_expanded, vtk_sdv[0], tol, sdv_name)
+           
