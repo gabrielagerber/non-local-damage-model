@@ -1,6 +1,10 @@
-# -*- coding: utf-8 -*-
-# ABAQUS to VTK export script with scalars, vectors, and tensors
-# Python 2.7 compatible
+'''
+This script is based on the work of Hadi Hosseini.
+It can be used to visualise the Abaqus simulation outcomes using UEL.
+
+CAVE:
+All variables expressed at integration points (S,LE,SDV) are averaged across the element.
+'''
 
 from abaqus import *
 from abaqusConstants import *
