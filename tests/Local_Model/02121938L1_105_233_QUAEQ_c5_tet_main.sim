@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- COPYRIGHT DASSAULT SYSTEMES 2009 -->
+<manifest>
+    <focusFile fileBinary="02121938L1_105_233_QUAEQ_c5_tet_main.simdir/02121938L1_105_233_QUAEQ_c5_tet_main.1.SMAFocus"/>
+    <publishIndex value="1"/>
+    <bulkFile bulkid="0" fileBinary="02121938L1_105_233_QUAEQ_c5_tet_main.2.SMABulk"/>
+    <bulkFile bulkid="1" fileBinary="02121938L1_105_233_QUAEQ_c5_tet_main.1.SMABulk"/>
+</manifest>
