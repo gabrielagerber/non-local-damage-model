@@ -486,6 +486,7 @@ C       UPDATE STATE VARIABLES
 C    
         KAPPA1=KAPPA0
         EPLAS1=EPLAS0 
+        WRITE(*,*) 'HELLO', YSTR
 C
 C       ELASTIC STRESS UPDATE
 C
@@ -502,7 +503,8 @@ C     INELASTIC CASE
 C     __________________________________________________________________ 
 C 
       ELSE IF (YSTR>TOL) THEN
-C    
+C       
+        WRITE(*,*) 'HELLO', KINC
         ITER=0
         EPLAS1=EPLAS0
         DKAPPA1=0.0D0
