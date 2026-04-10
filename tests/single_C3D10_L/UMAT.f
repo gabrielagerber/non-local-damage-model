@@ -261,7 +261,7 @@ C
       DENSFL=0
       VISCFL=PROPS(3)
       PYFL=PROPS(4)
-      XM=PROPS(5)
+      XM=0.0d0
       RHO=PROPS(6)
       MM1=PROPS(7)
       MM2=PROPS(8)

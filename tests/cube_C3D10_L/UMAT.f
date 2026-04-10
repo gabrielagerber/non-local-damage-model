@@ -258,10 +258,10 @@ C
       MAXITER=100
 C
       BF=PROPS(1)
-      DENSFL=PROPS(2)
+      DENSFL=0
       VISCFL=PROPS(3)
       PYFL=PROPS(4)
-      XM=PROPS(5)
+      XM=0.0d0
       RHO=PROPS(6)
       MM1=PROPS(7)
       MM2=PROPS(8)
@@ -486,7 +486,7 @@ C       UPDATE STATE VARIABLES
 C    
         KAPPA1=KAPPA0
         EPLAS1=EPLAS0 
-        WRITE(*,*) 'HELLO', YSTR
+        WRITE(*,*) 'HELLO2', DAM(KHAT1,KONSTD,CRITD)
 C
 C       ELASTIC STRESS UPDATE
 C

@@ -11,10 +11,10 @@ from abaqusConstants import *
 from odbAccess import *
 import os
 
-specimenList = ['C3D10_cube_NL']
+specimenList = ['C3D10_single']
 frequency = 1  # frame frequency
 
-directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/cube_C3D10_NL/'
+directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/single_C3D10_L/'
 
 DISPLACEMENT = dict()  # nodal displacements
 InitialCoords = dict()
