@@ -12,7 +12,7 @@ from odbMaterial import *
 from odbSection import *
 import os
 
-specimenList=['C3D10_single']
+specimenList=['C3D10_cube_NL']
 
 frequency = 1
 
@@ -20,7 +20,7 @@ DISPLACEMENT=dict()
 InitialCoords=dict()
 
 for specimen in specimenList: 
-   directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/single_C3D10_NL/'
+   directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/cube_C3D10_NL/'
    odbPath = directory+specimen+'.odb'
    inpPath = directory+specimen+'.inp'
    datPath = directory+specimen+'.dat'
@@ -202,7 +202,7 @@ for specimen in specimenList:
             if fr==0:
                vtkFile.write('%f\n' % (0.0))
             else:
-               vtkFile.write('%f\n' % (damageDict[fr][el-1][el]))
+               vtkFile.write('%f\n' % (damageDict[fr][0][1]))
 
         vtkFile.close()        
 
