@@ -504,7 +504,7 @@ C     __________________________________________________________________
 C 
       ELSE IF (YSTR>TOL) THEN
 C       
-        WRITE(*,*) 'HELLO2', KINC
+        WRITE(*,*) 'HELLO2', DAM(KHAT1,KONSTD,CRITD)
         ITER=0
         EPLAS1=EPLAS0
         DKAPPA1=0.0D0
