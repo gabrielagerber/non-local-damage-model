@@ -11,6 +11,81 @@ from abaqusConstants import *
 from odbMaterial import *
 from odbSection import *
 import os
+import re
+
+def parse_dat_file(datPath):
+    with open(datPath, 'r') as f:
+        lines = f.readlines()
+
+    damageDict = {}
+
+    inc_pattern = re.compile(r"INCREMENT\s+(\d+)\s+SUMMARY")
+    elem_pattern = re.compile(r"^\s*(\d+)\s+1\s+([0-9eE\+\-\.\s]+)$")
+
+    i = 0
+    current_inc = None
+
+    while i < len(lines):
+
+        line = lines[i]
+
+        # --- detect increment ---
+        inc_match = inc_pattern.search(line)
+        if inc_match:
+            current_inc = int(inc_match.group(1))
+            damageDict[current_inc] = {}
+            i += 1
+            continue
+
+        # --- detect element table header ---
+        if "ELEMENT  PT FOOT" in line:
+
+            i += 3  # skip header + NOTE line
+
+            if i < len(lines) and "ALL VALUES IN THIS TABLE ARE ZERO" in lines[i+1]:
+
+                damageDict[current_inc] = {}
+
+                # optional: fill all elements with zero for consistency
+                # (recommended for VTK)
+                for eid in range(1, numElements + 1):
+                    damageDict[current_inc][eid] = 0.0
+
+                # skip until next section
+                while i < len(lines) and "SUMMARY" not in lines[i]:
+                    i += 1
+
+                continue
+
+            # --- read elements until blank or next section ---
+            while i < len(lines):
+
+                l = lines[i].strip()
+
+                # stop conditions
+                if l == "" or "SUMMARY" in l or "NODE OUTPUT" in l:
+                    break
+
+                m = elem_pattern.match(lines[i])
+                if m:
+                    elem_id = int(m.group(1))
+                    values = m.group(2).split()
+
+                    # convert SDVs
+                    sdv_vals = [float(v) for v in values]
+
+                    # average SDVs
+                    avg_damage = sum(sdv_vals) / len(sdv_vals)
+
+                    damageDict[current_inc][elem_id] = avg_damage
+
+                i += 1
+
+            continue
+
+        i += 1
+
+    return damageDict
 
 specimenList=['C3D10_cube_NL']
 
@@ -95,46 +170,8 @@ for specimen in specimenList:
    
 ##########################################################################################   
    # Get the damage values
-   datFile = open(datPath,'r')
-   linesdat = datFile.readlines()
-      
-   damageDict = {} # key: time increment id and element id, value: averaged damage over 4 Gauss points
+   damageDict = parse_dat_file(datPath)
 
-   elementDict = {}
-
-   i=1
-   l=i
-   for inc in range (frequency,numFrames,frequency):
- 
-       switch2=0
-       switch1=0
-       while l <len(linesdat) and switch2==0:
-         if linesdat[i].find('INCREMENT     '+str(inc)+' SUMMARY')>-1 or linesdat[i].find('INCREMENT    '+\
-         str(inc)+' SUMMARY')>-1 or linesdat[i].find('INCREMENT   '+str(inc)+' SUMMARY')>-1 or linesdat[i].find('INCREMENT  '+str(inc)+' SUMMARY')>-1:
-            l=i
-            switch2=1
-            switch1=1
-            j=i+1
-            k=0
-            while j <len(linesdat) and switch1==1:
-               if linesdat[j].find('SUMMARY')>-1: 
-                  switch1=0
-               if linesdat[j].find('ELEMENT  PT FOOT')>-1 and switch1==1:
-                  SDV = linesdat[j+3].split()
-                  damageGP = [float(x) for x in SDV]
-                  k=k+1
-                  if not damageGP: 
-                     damage = 0.0
-                     elementDict={k:damage}
-                     damageDict.setdefault(inc,[]).append(elementDict)
-                  else:
-                     damage = (damageGP[2]+damageGP[3]+damageGP[4]+damageGP[5])/4
-                     elementDict={k:damage}
-                     damageDict.setdefault(inc,[]).append(elementDict)
-               j=j+1       
-         i=i+1
-
-   datFile.close()   
 ##########################################################################################
    for fr in range(0,numFrames,frequency):
         # Open the output vtk file and write the header
@@ -202,7 +239,7 @@ for specimen in specimenList:
             if fr==0:
                vtkFile.write('%f\n' % (0.0))
             else:
-               vtkFile.write('%f\n' % (damageDict[fr][0][1]))
+               vtkFile.write('%f\n' % (damageDict[fr][el]))
 
         vtkFile.close()        
 
