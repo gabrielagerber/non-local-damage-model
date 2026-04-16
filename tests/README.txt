@@ -46,7 +46,10 @@ With decreasing length-scale parameter XL, the impact of the non-
 local damage model should become smaller and smaller.
 
 Supporring data:
--
-- 
+- inhomCube_C3D10_L
+- inhomCube_C3D10_NL_xl03
+- inhomCube_C3D10_NL
+- inhomCube_C3D10_NLxl15
 
-ADD CONCLUSION HERE.
+The larger the length scale, the more homogeneous is the damage.
+This also has an impact on the deformation on the object.
