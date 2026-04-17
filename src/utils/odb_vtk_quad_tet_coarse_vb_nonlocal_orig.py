@@ -246,5 +246,5 @@ for specimen in specimenList:
    myOdb.close()
 
 '''
-/opt/Abaqus/611/Commands/abq6113 viewer noGUI=odb_vtk_quad_tet_coarse_vb_nonlocal.py
+abaqus viewer noGUI=odb_vtk_quad_tet_coarse_vb_nonlocal_orig.py
 '''
