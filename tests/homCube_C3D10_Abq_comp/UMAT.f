@@ -105,7 +105,7 @@ C     INPUT VARIABLES: SUPPLIED BY ABAQUS:
       INTEGER          NOEL,NPT,LAYER,KSPT,KSTEP,KINC
 C
 C     EXTERNAL FUNCTIONS
-      DOUBLE PRECISION RADK,DRADK,DAM,DDAM,VECNORM,KDET 
+      DOUBLE PRECISION RADK,DRADK,DAM,DDAM,VECNORM 
       DOUBLE PRECISION VISCY,VDYDK
 C
 C     VISCOPLASTIC DAMAGE UMAT VARIABLES
@@ -161,6 +161,9 @@ C     INTERFACE FOR ARRAY VALUED EXTERNAL FUNCTION VECDYAD
       END INTERFACE
 C
       DOUBLE PRECISION DKDE(6),DDDK, SSEFF(6)
+      EXTERNAL KDET
+      EXTERNAL MIGS
+      EXTERNAL ELGS
 C
 C     DOT_PRODUCT(VECTOR_A, VECTOR_B) SCALAR PRODUCT
 C     MATMUL(MATRIX_A, MATRIX_B) MATRIX MULTIPLICATION
@@ -249,6 +252,7 @@ C
       S0=0.0D0
       XDENSSTIFF1=0.0D0
       DDDK = 0.0D0
+      KAPPABAR = 0.0D0
 C
 C     TOLERANCE OF NUMERICAL ERROR  
 C 
@@ -259,10 +263,10 @@ C
       MAXITER=100
 C
       BF=PROPS(1)
-      DENSFL=PROPS(2)
+      DENSFL=0
       VISCFL=PROPS(3)
       PYFL=PROPS(4)
-      XM=0.0D0
+      XM=PROPS(5)
       RHO=PROPS(6)
       MM1=PROPS(7)
       MM2=PROPS(8)
@@ -293,10 +297,10 @@ C     IN WOLFRAM-2012 YIELD PARAMETERS BASED ON 0.2% STRAIN ARE GIVEN;
 C     HOWEVER, THESE VALUES ARE SCALED TO OBTAIN THE ULTIMATE  
 C     STRENGTH VALUES USED IN THIS UMAT.
 C     
-      SIGD0P=66.01D0*1000
-      SIGD0N=98.88D0*1000
+      SIGD0P=66.01D0
+      SIGD0N=98.88D0
       CHID0=0.2182D0
-      TAUD0=41.89D0*1000
+      TAUD0=41.89D0
       PP=1.69D0
       QQ=1.05D0
 C
@@ -435,7 +439,7 @@ C
 C
 C     UPDATE BVTV
 C
-      DETF0 =  KDET(DFGRD0)
+      CALL KDET(DFGRD0,DETF0)
 C 
       IF (RHO/DETF0 .GE. 1.0D0) THEN
       STATEV(28) = 1.0D0
@@ -487,6 +491,7 @@ C       UPDATE STATE VARIABLES
 C    
         KAPPA1=KAPPA0
         EPLAS1=EPLAS0 
+        WRITE(*,*) 'HELLO1', DAM(KHAT1,KONSTD,CRITD)
 C
 C       ELASTIC STRESS UPDATE
 C
@@ -503,7 +508,8 @@ C     INELASTIC CASE
 C     __________________________________________________________________ 
 C 
       ELSE IF (YSTR>TOL) THEN
-C    
+C       
+        WRITE(*,*) 'HELLO2', DAM(KHAT1,KONSTD,CRITD)
         ITER=0
         EPLAS1=EPLAS0
         DKAPPA1=0.0D0
@@ -1264,18 +1270,152 @@ C
       RETURN
       END
 C     __________________________________________________________________ 
-
 C
-      DOUBLE PRECISION FUNCTION KDET(A)
-      IMPLICIT NONE
-      DOUBLE PRECISION A(3,3)
-
-      KDET =    A(1,1)*A(2,2)*A(3,3) +
-     +          A(1,2)*A(2,3)*A(3,1) +
-     +          A(1,3)*A(2,1)*A(3,2) -
-     +          A(1,3)*A(2,2)*A(3,1) -
-     +          A(1,2)*A(2,1)*A(3,3) -
-     +          A(1,1)*A(2,3)*A(3,2)
-
+*************************************************
+**          DETERMINANT OF A 3X3 MATRIX         *
+*************************************************
+C 
+C
+      SUBROUTINE KDET(A,B)
+C
+      INCLUDE 'ABA_PARAM.INC'
+C 
+      DOUBLE PRECISION A(3,3),B
+      
+      B = 0.0D0
+C
+      B =     A(1,1)*A(2,2)*A(3,3)+
+     +        A(1,2)*A(2,3)*A(3,1)+
+     +        A(1,3)*A(2,1)*A(3,2)-
+     +        A(1,3)*A(2,2)*A(3,1)-
+     +        A(1,2)*A(2,1)*A(3,3)-
+     +        A(1,1)*A(2,3)*A(3,2)
+C 
       RETURN
       END
+
+
+
+            SUBROUTINE MIGS(A,N,X)
+C
+*************************************************
+C     Subroutine to invert matrix A(N,N) with the inverse stored
+C     in X(N,N) in the output. A is stored in STOA and is resituted
+C     as outpout
+*************************************************
+C 
+      IMPLICIT NONE
+C 
+      DOUBLE PRECISION A(N,N),STOA(N,N),B(N,N),X(N,N)
+      INTEGER INDX(N),N,I,J,K
+C 
+      DO 140 I=1,N
+        DO 130 J=1,N
+          STOA(I,J)=A(I,J)
+          B(I,J)=0.0D0
+  130   CONTINUE
+  140 CONTINUE
+      DO 150 I=1,N
+        B(I,I)=1.0D0
+  150 CONTINUE
+C 
+      CALL ELGS(A,N,INDX)
+C 
+      DO 180 I=1,N-1
+        DO 170 J=I+1,N
+          DO 160 K=1,N
+            B(INDX(J),K)=B(INDX(J),K)
+     1                    -A(INDX(J),I)*B(INDX(I),K)
+  160     CONTINUE
+  170   CONTINUE
+  180 CONTINUE
+C 
+      DO 210 I=1,N
+        X(N,I)=B(INDX(N),I)/A(INDX(N),N)
+        DO 200 J=N-1,1,-1
+          X(J,I)=B(INDX(J),I)
+          DO 190 K=J+1,N
+            X(J,I)=X(J,I)-A(INDX(J),K)*X(K,I)
+  190     CONTINUE
+          X(J,I)= X(J,I)/A(INDX(J),J)
+  200   CONTINUE
+  210 CONTINUE
+C
+C Restitution of A
+C 
+      DO 230 I=1,N
+        DO 220 J=1,N
+          A(I,J)=STOA(I,J)
+  220   CONTINUE
+  230 CONTINUE
+C 
+      RETURN
+      END
+
+*******************************************
+      SUBROUTINE ELGS(A,N,INDX)
+C
+C     Subroutine to perform the partial-pivoting Gaussian elimination.
+C     A(N,N) is the original matrix in the input and transformed
+C     matrix plus the pivoting element ratios below the diagonal in
+C     the output.  INDX(N) records the pivoting order.
+C 
+      IMPLICIT NONE
+C 
+      DOUBLE PRECISION A(N,N),C(N)
+      INTEGER N, INDX(N)
+      DOUBLE PRECISION C1,PI1,PI,PJ
+      INTEGER K,ITMP,I,J
+C
+C     Initialize the index
+C 
+      DO 240 I=1,N
+        INDX(I)=I
+  240 CONTINUE
+C
+C     Find the rescaling factors, one from each row
+C 
+        DO 260 I=1,N
+          C1= 0.0
+          DO 250 J=1,N
+            C1=DMAX1(C1,DABS(A(I,J)))
+  250     CONTINUE
+          C(I)=C1
+  260   CONTINUE
+C
+C     Search the pivoting (largest) element from each column
+C 
+      DO 300 J=1,N-1
+        PI1=0.0
+        DO 270 I=J,N
+          PI=DABS(A(INDX(I),J))/C(INDX(I))
+          IF (PI.GT.PI1) THEN
+            PI1=PI
+            K=I
+          ELSE
+          END IF
+  270   CONTINUE
+C
+C     Interchange the rows via INDX(N) to record pivoting order
+C 
+        ITMP=INDX(J)
+        INDX(J)=INDX(K)
+        INDX(K)=ITMP
+        DO 290 I=J+1,N
+          PJ=A(INDX(I),J)/A(INDX(J),J)
+C
+C     Record pivoting ratios below the diagonal
+C 
+          A(INDX(I),J)=PJ
+C
+C     Modify other elements accordingly
+C 
+          DO 280 K=J+1,N
+            A(INDX(I),K)=A(INDX(I),K)-PJ*A(INDX(J),K)
+  280     CONTINUE
+  290   CONTINUE
+  300 CONTINUE
+C 
+      RETURN
+      END
+********************************************
