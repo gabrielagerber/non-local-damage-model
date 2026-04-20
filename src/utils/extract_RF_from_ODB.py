@@ -1,7 +1,8 @@
-from odbAccess import openOdb
-import csv
+import sys
 
 def FD_from_odb(odb_path, step_name, out_csv):
+    from odbAccess import openOdb
+    import csv
     '''
     This function extracts force and displacement information for each node from .odf and stores
     it in a csv file.
@@ -59,6 +60,12 @@ def FD_from_odb(odb_path, step_name, out_csv):
     odb.close()
 
 if __name__ == "__main__":
-    odb_path = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_comp/C3D10_cube_NL.odb'   
-    step_name = 'Step-1'      
-    out_csv = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_comp/RF_history.csv'
+    # odb_path = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_comp/C3D10_cube_NL.odb'   
+    # step_name = 'Step-1'      
+    # out_csv = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_comp/RF_history.csv'
+    
+    odb_path  = sys.argv[1]
+    step_name = sys.argv[2]
+    out_csv   = sys.argv[3]
+
+    FD_from_odb(odb_path, step_name, out_csv)
