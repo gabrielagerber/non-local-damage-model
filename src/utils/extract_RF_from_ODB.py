@@ -10,26 +10,48 @@ step = odb.steps[step_name]
 
 f = open(out_csv, 'wb')   # Python 2 requires binary mode
 writer = csv.writer(f)
-writer.writerow(['Increment', 'FrameValue', 'Node', 'RF1', 'RF2', 'RF3'])
+
+writer.writerow([
+    'Increment', 'FrameValue', 'Node',
+    'RF1', 'RF2', 'RF3',
+    'U1', 'U2', 'U3'
+])
 
 for frame in step.frames:
     inc = frame.incrementNumber
     time = frame.frameValue
 
-    if 'RF' not in frame.fieldOutputs:
+    # Skip frame if fields are missing
+    if 'RF' not in frame.fieldOutputs or 'U' not in frame.fieldOutputs:
         continue
 
     rf_field = frame.fieldOutputs['RF']
+    u_field  = frame.fieldOutputs['U']
+
+    # Build fast lookup for displacement by node label
+    u_dict = {}
+    for v in u_field.values:
+        u_dict[v.nodeLabel] = v.data
 
     for v in rf_field.values:
         node = v.nodeLabel
         rf = v.data
 
+        # Reaction forces
         rf1 = rf[0]
         rf2 = rf[1] if len(rf) > 1 else 0.0
         rf3 = rf[2] if len(rf) > 2 else 0.0
 
-        writer.writerow([inc, time, node, rf1, rf2, rf3])
+        # Displacements (match by node)
+        if node in u_dict:
+            u = u_dict[node]
+            u1 = u[0]
+            u2 = u[1] if len(u) > 1 else 0.0
+            u3 = u[2] if len(u) > 2 else 0.0
+        else:
+            u1 = u2 = u3 = 0.0
+
+        writer.writerow([inc, time, node, rf1, rf2, rf3, u1, u2, u3])
 
 f.close()
 odb.close()
