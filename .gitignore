@@ -9,3 +9,4 @@
 *.vtk
 *.json
 os
+*.pyc
