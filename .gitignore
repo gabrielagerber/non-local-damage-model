@@ -8,3 +8,5 @@
 *.sta
 *.vtk
 *.json
+os
+*.pyc

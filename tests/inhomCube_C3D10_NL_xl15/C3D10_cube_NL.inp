@@ -1,27 +1,53 @@
 *Heading
 ** C3D10 single element
-*****************************************
 *NODE, NSET=ALLNODES
-1, 0.0, 0.0, 0.0
-2, 1.0, 0.0, 0.0
-3, 0.0, 1.0, 0.0
-4, 0.0, 0.0, 1.0
-5, 0.5, 0.0, 0.0
-6, 0.5, 0.5, 0.0
-7, 0.0, 0.5, 0.0
-8, 0.0, 0.0, 0.5
-9, 0.5, 0.0, 0.5
-10, 0.0, 0.5, 0.5
-*****************************************
+1, 0,0,0
+2, 1,0,0
+3, 1,1,0
+4, 0,1,0
+5, 0,0,1
+6, 1,0,1
+7, 1,1,1
+8, 0,1,1
+9,  0.5,0,0
+10, 1,0.5,0
+11, 0.5,1,0
+12, 0,0.5,0
+13, 0.5,0,1
+14, 1,0.5,1
+15, 0.5,1,1
+16, 0,0.5,1
+17, 0,0,0.5
+18, 1,0,0.5
+19, 1,1,0.5
+20, 0,1,0.5
+21, 0.5,0.5,0
+22, 0.5,0.5,1
+23, 0.5,0,0.5
+24, 0.5,1,0.5
+25, 0,0.5,0.5
+26, 1,0.5,0.5
+27, 0.5,0.5,0.5 
+**
+************************************************
 *USER ELEMENT, TYPE=U1, NODES=10, COORDINATES=3, PROPERTIES=15, 
 VARIABLES=172, UNSYMM
 1,2,3
 1,11
 5,
-*****************************************
-*ELEMENT,TYPE=U1,ELSET=TETRA
-1, 1,  2, 3, 4, 5, 6, 7, 8, 9, 10
-*****************************************
+************************************************
+*ELEMENT,TYPE=U1, ELSET=CUBE
+1, 1,2,3,7, 9,10,21,27,26,19
+2, 1,3,4,7, 21,11,12,27,19,24
+3, 1,4,8,7, 12,20,25,27,24,15
+4, 1,8,5,7, 25,16,17,27,15,22
+5, 1,5,6,7, 17,13,23,27,22,14
+6, 1,6,2,7, 23,18,9,27,14,26
+**
+************************************************
+*ELSET, ELSET=TETRA
+1,2,3,4,5,6
+************************************************************
 *UEL PROPERTY,  elset=TETRA
 **0, 0, 0, 3, 1.1, 0.18273475895527272, 1.1001624269936399, 
 **1.0518177747725455, 0.84801979823381446, 0.0291708, 0.94012, 0.339594, 
@@ -30,11 +56,11 @@ VARIABLES=172, UNSYMM
 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0
 *****************************************
 *NSET, NSET=BOTTOM
- 1, 2, 3, 5, 6, 7
+1,2,3,4,9,10,11,12,21
 *NSET, NSET=TOP
- 4
+5,6,7,13,14
 *NSET, NSET=SURFACE
- 1, 2, 3, 4 
+1, 2, 3, 4, 5, 6, 7, 8   
 *****************************************
 ** BOUNDARY CONDITIONS
 *BOUNDARY, TYPE=DISPLACEMENT
@@ -47,12 +73,12 @@ STEP 1:
 **STATIC
 0.01,1.0,1e-5,0.01
 *BOUNDARY, TYPE=DISPLACEMENT
-TOP, 3, 3, -0.85
+TOP, 3, 3, -0.5
 ** NEUMANN BOUNDARY
 *CFLUX
 SURFACE,11,0
 **
-*EL PRINT,FREQUENCY=1,POSITION=INTEGRATION POINTS
+*EL PRINT,FREQUENCY=1
 SDV8, SDV51, SDV94, SDV137
 *NODE PRINT,FREQUENCY=1
 *NODE PRINT,NSET=TOP
@@ -62,12 +88,10 @@ RF,
 *NODE OUTPUT, NSET=ALLNODES
 U, 
 RF,
-*ELEMENT OUTPUT, ELSET=TETRA
-SDV
 *NODE FILE, NSET=TOP
 U,
 RF,
-*EL FILE, ELSET=TETRA,POSITION=INTEGRATION POINTS
+*EL FILE, ELSET=TETRA
 SDV
 *OUTPUT, HISTORY, FREQUENCY=1
 *NODE OUTPUT, NSET=TOP
@@ -80,4 +104,7 @@ RF,
 *NODE OUTPUT, NSET=ALLNODES
 U, 
 RF,
+*OUTPUT, FIELD, FREQUENCY=1
+*ELEMENT OUTPUT, ELSET=TETRA
+SDV
 *END STEP

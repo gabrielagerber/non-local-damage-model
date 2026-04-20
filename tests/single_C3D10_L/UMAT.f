@@ -258,10 +258,10 @@ C
       MAXITER=100
 C
       BF=PROPS(1)
-      DENSFL=PROPS(2)
+      DENSFL=0
       VISCFL=PROPS(3)
       PYFL=PROPS(4)
-      XM=PROPS(5)
+      XM=0.0d0
       RHO=PROPS(6)
       MM1=PROPS(7)
       MM2=PROPS(8)
@@ -292,10 +292,10 @@ C     IN WOLFRAM-2012 YIELD PARAMETERS BASED ON 0.2% STRAIN ARE GIVEN;
 C     HOWEVER, THESE VALUES ARE SCALED TO OBTAIN THE ULTIMATE  
 C     STRENGTH VALUES USED IN THIS UMAT.
 C     
-      SIGD0P=66.01D0*1000
-      SIGD0N=98.88D0*1000
+      SIGD0P=66.01D0
+      SIGD0N=98.88D0
       CHID0=0.2182D0
-      TAUD0=41.89D0*1000
+      TAUD0=41.89D0
       PP=1.69D0
       QQ=1.05D0
 C
@@ -486,6 +486,7 @@ C       UPDATE STATE VARIABLES
 C    
         KAPPA1=KAPPA0
         EPLAS1=EPLAS0 
+        WRITE(*,*) 'HELLO1', DAM(KHAT1,KONSTD,CRITD)
 C
 C       ELASTIC STRESS UPDATE
 C
@@ -502,7 +503,8 @@ C     INELASTIC CASE
 C     __________________________________________________________________ 
 C 
       ELSE IF (YSTR>TOL) THEN
-C    
+C       
+        WRITE(*,*) 'HELLO2', KINC
         ITER=0
         EPLAS1=EPLAS0
         DKAPPA1=0.0D0
