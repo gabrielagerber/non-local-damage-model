@@ -25,18 +25,8 @@ def extract_fd_from_odb(folder_path,model_name,out_name):
     else:
             print("Extraction finished successfully")
 
-def fd_plot(plotname,f,d):
-    plt.figure()
-    plt.plot(d, f)
-    plt.xlabel('displacement')
-    plt.ylabel('force')
-    plt.savefig(plotname, dpi=300 )
-    plt.show()
-                 
-
-## Create Force-displacement plot
-def create_fd_plot(path_results):
-
+# Filter force displacement data
+def get_fd_curve(path_results, top_nodes):
     ## Import results
     df_res = pd.read_csv(path_results)
 
@@ -58,19 +48,47 @@ def create_fd_plot(path_results):
 
     res = pd.DataFrame(results, columns=['Increment','U3','RF3_sum'])
 
-    ## Plot
-    plotname = folder_path + model_name[:-3] + "_fd.png"
-    f = res['RF3_sum']
-    d = res['U3']
-    fd_plot(plotname,f,d)
-    
+    return res['U3'].values, res['RF3_sum'].values
+
+# Make force-displacement plot
+def fd_plot(plotname,f,d):
+    plt.figure()
+    plt.plot(d, f)
+    plt.xlabel('displacement')
+    plt.ylabel('force')
+    plt.savefig(plotname, dpi=300 )
+    plt.show()  
+
+# Force-displacement plot overlay function
+def fd_plot_overlay(plotname, curves, labels):
+    plt.figure()
+
+    for (d, f), label in zip(curves, labels):
+        plt.plot(d, f, label=label)
+
+    plt.xlabel('displacement')
+    plt.ylabel('force')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(plotname, dpi=300)
+    plt.show()
 
 if __name__ == "__main__":
     
     ## User Input
     # Model data
-    folder_path = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_comp/'
-    model_name = 'C3D10_cube_NL.odb'   
+    path1 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_comp/'
+    path2 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_L_comp/'
+    path3 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_Abq_comp/'
+
+    model_name1 = 'C3D10_cube_NL.odb'
+    model_name2 = 'C3D10_cube_NL.odb'
+    model_name3 = 'C3D10_cube_Abq.odb'
+
+    model1_label = 'Nonlocal'
+    model2_label = 'Local'
+    model3_label = 'Abaqus'
+
     step_name = 'Step-1'      
     out_name = 'RF_history.csv'
     top_nodes = [5,6,7,8,13,14,15,16,22]
@@ -78,11 +96,29 @@ if __name__ == "__main__":
     # Other input
     utils_path = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/src/utils/'
 
-    # Extract results
-    extract_fd_from_odb(folder_path,model_name,out_name)
+    # Assemble input information
+    folder_path = [path1, path2, path3]
+    model_name = [model_name1, model_name2, model_name3]  
+    labels = [model1_label, model2_label, model3_label]
+    curves = []
 
-    # Create force-displacement plot
-    path_results = folder_path + out_name
-    create_fd_plot(path_results)
+    for fp, mn, label in zip(folder_path, model_name, labels):
+
+        # Extract data from odb
+        extract_fd_from_odb(fp, mn, out_name)
+
+        csv_path = fp + out_name
+
+        # Compute curve
+        d, f = get_fd_curve(csv_path, top_nodes)
+        curves.append((d, f))
+
+        # Individual plot
+        plotname = fp + mn[:-4] + "_fd.png"
+        fd_plot(plotname, f, d)
+
+    # --- Overlay plot
+    plotname_overlay = folder_path[0] + "FD_overlay.png"
+    fd_plot_overlay(plotname_overlay, curves, labels)
 
         
