@@ -35,7 +35,7 @@ def fd_plot(plotname,f,d):
                  
 
 ## Create Force-displacement plot
-def create_fd_plot(path_results):
+def create_fd_plot(path_results, path, model_name):
 
     ## Import results
     df_res = pd.read_csv(path_results)
@@ -59,7 +59,7 @@ def create_fd_plot(path_results):
     res = pd.DataFrame(results, columns=['Increment','U3','RF3_sum'])
 
     ## Plot
-    plotname = folder_path + model_name[:-4] + "_fd.png"
+    plotname = path + model_name[:-4] + "_fd.png"
     f = res['RF3_sum']
     d = res['U3']
     fd_plot(plotname,f,d)
@@ -69,8 +69,16 @@ if __name__ == "__main__":
     
     ## User Input
     # Model data
-    folder_path = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_comp/'
-    model_name = 'C3D10_cube_NL.odb'   
+    path1 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_comp/'
+    path2 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_L_comp/'
+    path3 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_Abq_comp/'
+
+    model_name1 = 'C3D10_cube_NL.odb'
+    model_name2 = 'C3D10_cube_NL.odb'
+    model_name3 = 'C3D10_cube_Abq.odb'
+
+    folder_path = [path1, path2, path3]
+    model_name = [model_name1, model_name2, model_name3]   
     step_name = 'Step-1'      
     out_name = 'RF_history.csv'
     top_nodes = [5,6,7,8,13,14,15,16,22]
@@ -79,10 +87,11 @@ if __name__ == "__main__":
     utils_path = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/src/utils/'
 
     # Extract results
-    extract_fd_from_odb(folder_path,model_name,out_name)
+    for n, path in enumerate(folder_path):
+        extract_fd_from_odb(path,model_name[n],out_name)
 
-    # Create force-displacement plot
-    path_results = folder_path + out_name
-    create_fd_plot(path_results)
+        # Create force-displacement plot
+        path_results = path + out_name
+        create_fd_plot(path_results, path, model_name[n])
 
         
