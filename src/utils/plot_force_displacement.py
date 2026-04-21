@@ -59,7 +59,7 @@ def create_fd_plot(path_results):
     res = pd.DataFrame(results, columns=['Increment','U3','RF3_sum'])
 
     ## Plot
-    plotname = folder_path + model_name[:-3] + "_fd.png"
+    plotname = folder_path + model_name[:-4] + "_fd.png"
     f = res['RF3_sum']
     d = res['U3']
     fd_plot(plotname,f,d)
