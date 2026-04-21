@@ -70,9 +70,4 @@ Supporting data:
 - homCube_C3D10_Abq_comp
 
 The results in the dat file between the two simulations are 
-identical. However, when printing dammage values from the 
-UMAT, small differences (< 10^-5) can be observed, indicating 
-that the results are not perfectly equaivalent. However, it 
-should be noted that the UMAT had to be modified in order to
-run it independently from the UEL. Furthermore all non-local
-parameters were removed from the UMAT code.
+identical (< 10^-8). 
