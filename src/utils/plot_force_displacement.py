@@ -26,7 +26,7 @@ def extract_fd_from_odb(folder_path,model_name,out_name):
             print("Extraction finished successfully")
 
 # Filter force displacement data
-def get_fd_curve(path_results, top_nodes):
+def get_fd_curve(path_results, top_nodes, dofRF, dofU):
     ## Import results
     df_res = pd.read_csv(path_results)
 
@@ -41,8 +41,8 @@ def get_fd_curve(path_results, top_nodes):
 
         gsel = g[g['Node'].isin(top_nodes)]
 
-        Fz = gsel['RF3'].sum()
-        Uz = gsel['U3'].mean()
+        Fz = gsel[dofRF].sum()
+        Uz = gsel[dofU].mean()
 
         results.append([inc, Uz, Fz])
 
@@ -93,6 +93,10 @@ if __name__ == "__main__":
     model_name4 = 'C3D10_cube_NL.odb'
     model4_label = 'Nonlocal_tens'
 
+    path5 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_shear/'
+    model_name5 = 'C3D10_cube_NL.odb'
+    model5_label = 'Nonlocal_shear'
+
     step_name = 'Step-1'      
     out_name = 'RF_history.csv'
     top_nodes = [5,6,7,8,13,14,15,16,22]
@@ -101,9 +105,9 @@ if __name__ == "__main__":
     utils_path = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/src/utils/'
 
     # Assemble input information
-    folder_path = [path1, path2, path3, path4]
-    model_name = [model_name1, model_name2, model_name3, model_name4]  
-    labels = [model1_label, model2_label, model3_label, model4_label]
+    folder_path = [path1, path2, path3, path4, path5]
+    model_name = [model_name1, model_name2, model_name3, model_name4, model_name5]  
+    labels = [model1_label, model2_label, model3_label, model4_label, model5_label]
     curves = []
 
     for fp, mn, label in zip(folder_path, model_name, labels):
@@ -114,7 +118,7 @@ if __name__ == "__main__":
         csv_path = fp + out_name
 
         # Compute curve
-        d, f = get_fd_curve(csv_path, top_nodes)
+        d, f = get_fd_curve(csv_path, top_nodes,'RF3', 'U3')
         curves.append((d, f))
 
         # Individual plot
