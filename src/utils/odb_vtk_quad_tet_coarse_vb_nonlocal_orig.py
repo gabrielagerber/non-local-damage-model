@@ -95,7 +95,7 @@ DISPLACEMENT=dict()
 InitialCoords=dict()
 
 for specimen in specimenList: 
-   directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/inhomCube_C3D10_NL_xl03/'
+   directory = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_shear/'
    odbPath = directory+specimen+'.odb'
    inpPath = directory+specimen+'.inp'
    datPath = directory+specimen+'.dat'
