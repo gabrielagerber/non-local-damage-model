@@ -78,16 +78,20 @@ if __name__ == "__main__":
     ## User Input
     # Model data
     path1 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_comp/'
-    path2 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_L_comp/'
-    path3 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_Abq_comp/'
-
     model_name1 = 'C3D10_cube_NL.odb'
-    model_name2 = 'C3D10_cube_NL.odb'
-    model_name3 = 'C3D10_cube_Abq.odb'
+    model1_label = 'Nonlocal_comp'
 
-    model1_label = 'Nonlocal'
+    path2 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_L_comp/'
+    model_name2 = 'C3D10_cube_NL.odb'
     model2_label = 'Local'
+
+    path3 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_Abq_comp/'
+    model_name3 = 'C3D10_cube_Abq.odb'
     model3_label = 'Abaqus'
+
+    path4 = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/tests/homCube_C3D10_NL_tens/'
+    model_name4 = 'C3D10_cube_NL.odb'
+    model4_label = 'Nonlocal_tens'
 
     step_name = 'Step-1'      
     out_name = 'RF_history.csv'
@@ -97,9 +101,9 @@ if __name__ == "__main__":
     utils_path = '/home/gabriela/Documents/04_Projects/2026_NonLocal_Damage_Model/02_Code/non-local-damage-model/src/utils/'
 
     # Assemble input information
-    folder_path = [path1, path2, path3]
-    model_name = [model_name1, model_name2, model_name3]  
-    labels = [model1_label, model2_label, model3_label]
+    folder_path = [path1, path2, path3, path4]
+    model_name = [model_name1, model_name2, model_name3, model_name4]  
+    labels = [model1_label, model2_label, model3_label, model4_label]
     curves = []
 
     for fp, mn, label in zip(folder_path, model_name, labels):
